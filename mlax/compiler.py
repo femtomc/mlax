@@ -24,6 +24,7 @@ WrappedFunWithAux = tuple[lu.WrappedFun, Callable[[], Any]]
 dtype_map = {
     mx.int32: int,
     mx.float32: float,
+    mx.uint32: jnp.uint32,
 }
 
 

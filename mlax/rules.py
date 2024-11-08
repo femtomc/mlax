@@ -4,7 +4,7 @@ import beartype.typing as btyping
 import jax.core as jc
 import mlx.core as mx
 from jax import lax
-from jax._src import ad_util
+from jax._src import ad_util, prng
 
 Callable = btyping.Callable
 
@@ -34,7 +34,7 @@ mlx_rules = Ruleset()
 # Registered rules #
 ####################
 
-
+# Common.
 mlx_rules.register(lax.add_p, mx.add)
 mlx_rules.register(lax.mul_p, mx.multiply)
 mlx_rules.register(lax.sin_p, mx.sin)
@@ -45,3 +45,19 @@ mlx_rules.register(lax.acos_p, mx.arccos)
 mlx_rules.register(lax.acosh_p, mx.arccosh)
 mlx_rules.register(lax.abs_p, mx.abs)
 mlx_rules.register(ad_util.add_any_p, mx.add)
+
+
+# Randomness.
+@mlx_rules.register_def(prng.random_wrap_p)
+def random_wrap_mx(v, **params):
+    return v
+
+
+@mlx_rules.register_def(prng.random_split_p)
+def random_split_mx(v, **params):
+    return mx.random.split(v)
+
+
+@mlx_rules.register_def(prng.random_unwrap_p)
+def random_unwrap_p(v, **params):
+    return v

@@ -7,6 +7,9 @@ import pytest
 from mlax import mlax
 
 
+# This is a convenience function designed to support equality
+# comparison between executing a function using JAX's JIT
+# and executing a function using MX compile.
 def jax_equality_assertion(prim_fn, *args):
     dtype_map = {
         mx.int32: int,
@@ -34,6 +37,10 @@ def jax_equality_assertion(prim_fn, *args):
     )
 
 
+def tire_kick_assertion(fn, *args):
+    assert mx.any(mx.compile(mlax(fn))(*args))
+
+
 class TestCompiler:
     def test_add_p(self):
         jax_equality_assertion(lambda x, y: x + y, mx.array(5.0), mx.array(5.0))
@@ -43,6 +50,10 @@ class TestCompiler:
 
     def test_sin_p(self):
         jax_equality_assertion(lambda x: jnp.sin(x), mx.array(5.0))
+
+    def test_key_split(self):
+        lambda key: jax.random.split(key)
+        tire_kick_assertion(lambda key: jax.random.split(key), mx.random.key(1))
 
     def test_composition(self):
         def composed(x, y):
