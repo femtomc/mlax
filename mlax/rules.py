@@ -15,17 +15,21 @@ class Ruleset:
         default_factory=dict
     )
 
-    def register(self, prim):
+    def register(self, jax_primitive: jc.Primitive):
         def _register(rule):
-            self.mlx_rules[prim] = rule
+            self.mlx_rules[jax_primitive] = rule
 
         return _register
 
-    def __getitem__(self, key):
-        return self.mlx_rules[key]
+    def __getitem__(self, jax_primitive: jc.Primitive):
+        return self.mlx_rules[jax_primitive]
 
 
 mlx_rules = Ruleset()
+
+####################
+# Registered rules #
+####################
 
 
 @mlx_rules.register(lax.add_p)
@@ -50,4 +54,4 @@ def cos_mlx(x):
 
 @mlx_rules.register(ad_util.add_any_p)
 def add_any_mlx(x, y):
-    return x + y
+    return mx.add(x, y)
