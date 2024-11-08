@@ -49,3 +49,14 @@ assert all(
     == mx.compile(mlax(jax.vmap(jax_code)))(mx.ones(5), mx.ones(5))
 )
 ```
+
+## State of coverage of JAX primitives
+
+- [X] `lax.add_p`
+- [X] `lax.mul_p`
+- [X] `lax.sin_p`
+- [X] `lax.asinh_p`
+- [X] `lax.cos_p`
+- [X] `lax.acos_p`
+- [X] `lax.abs_p`
+- [X] `ad_util.add_any_p`
