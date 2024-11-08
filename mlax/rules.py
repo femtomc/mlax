@@ -15,7 +15,10 @@ class Ruleset:
         default_factory=dict
     )
 
-    def register(self, jax_primitive: jc.Primitive):
+    def register(self, jax_primitive: jc.Primitive, mx_primitive):
+        self.mlx_rules[jax_primitive] = mx_primitive
+
+    def register_def(self, jax_primitive: jc.Primitive):
         def _register(rule):
             self.mlx_rules[jax_primitive] = rule
 
@@ -32,26 +35,8 @@ mlx_rules = Ruleset()
 ####################
 
 
-@mlx_rules.register(lax.add_p)
-def add_mlx(x, y):
-    return mx.add(x, y)
-
-
-@mlx_rules.register(lax.mul_p)
-def mul_mlx(x, y):
-    return mx.multiply(x, y)
-
-
-@mlx_rules.register(lax.sin_p)
-def sin_mlx(x):
-    return mx.sin(x)
-
-
-@mlx_rules.register(lax.cos_p)
-def cos_mlx(x):
-    return mx.cos(x)
-
-
-@mlx_rules.register(ad_util.add_any_p)
-def add_any_mlx(x, y):
-    return mx.add(x, y)
+mlx_rules.register(lax.add_p, mx.add)
+mlx_rules.register(lax.mul_p, mx.multiply)
+mlx_rules.register(lax.sin_p, mx.sin)
+mlx_rules.register(lax.cos_p, mx.cos)
+mlx_rules.register(ad_util.add_any_p, mx.add)

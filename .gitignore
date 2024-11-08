@@ -3,6 +3,7 @@ data
 *.so
 *.egg-info
 *.whl
+*.ipynb
 build/bazel*
 dist/
 .ipynb_checkpoints

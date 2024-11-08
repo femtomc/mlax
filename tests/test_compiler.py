@@ -29,6 +29,17 @@ class TestCompiler:
             mx.array(5.0),
         )
 
+    def test_vmap_composition(self):
+        def composed(x, y):
+            v = x + y
+            v = v * v
+            return jnp.sin(v)
+
+        assert all(
+            jax.vmap(composed)(jnp.ones(5), jnp.ones(5))
+            == mx.compile(mlax(jax.vmap(composed)))(mx.ones(5), mx.ones(5))
+        )
+
     def test_grad(self):
         def composed(x, y):
             v = x + y
