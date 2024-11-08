@@ -11,6 +11,7 @@ import mlx
 import mlx.core as mx
 from jax import lax, tree_util
 from jax import util as jax_util
+from jax._src import ad_util
 from jax.extend import linear_util as lu
 from jax.interpreters import batching, mlir
 from jax.interpreters import partial_eval as pe
@@ -140,17 +141,27 @@ mlx_rules = Ruleset()
 
 @mlx_rules.register(lax.add_p)
 def add_mlx(x, y):
-    return x + y
+    return mx.add(x, y)
 
 
 @mlx_rules.register(lax.mul_p)
 def mul_mlx(x, y):
-    return x * y
+    return mx.multiply(x, y)
 
 
 @mlx_rules.register(lax.sin_p)
 def sin_mlx(x):
     return mx.sin(x)
+
+
+@mlx_rules.register(lax.cos_p)
+def cos_mlx(x):
+    return mx.cos(x)
+
+
+@mlx_rules.register(ad_util.add_any_p)
+def add_any_mlx(x, y):
+    return x + y
 
 
 @dataclass

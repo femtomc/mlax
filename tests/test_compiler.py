@@ -1,3 +1,4 @@
+import jax
 import jax.numpy as jnp
 import mlx.core as mx
 
@@ -23,4 +24,18 @@ class TestCompiler:
             v = v * v
             return jnp.sin(v)
 
-        assert mx.compile(mlax(composed))(mx.array(5.0), mx.array(5.0))
+        assert mx.compile(mlax(composed))(
+            mx.array(5.0),
+            mx.array(5.0),
+        )
+
+    def test_grad(self):
+        def composed(x, y):
+            v = x + y
+            v = v * v
+            return jnp.sin(v)
+
+        assert mx.compile(mlax(jax.grad(composed)))(
+            mx.array(5.0),
+            mx.array(5.0),
+        )
