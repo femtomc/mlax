@@ -18,6 +18,9 @@ VarOrLiteral = jc.Var | jc.Literal
 Callable = btyping.Callable
 WrappedFunWithAux = tuple[lu.WrappedFun, Callable[[], Any]]
 
+# We have construct a map between MX types
+# and types that JAX can use to specify its arrays dtypes,
+# but only for get_shaped_aval below.
 dtype_map = {
     mx.int32: int,
     mx.float32: float,
@@ -31,6 +34,7 @@ def get_shaped_aval(x):
     return jc.raise_to_shaped(jc.get_aval(surrogate))
 
 
+# The point of caching here is that, when JAX encounters a function that it needs to convert to a Jaxpr, if it has already done that before, save the work!
 @lu.cache
 def cached_stage_dynamic(flat_fun, in_avals):
     jaxpr, _, consts = pe.trace_to_jaxpr_dynamic(flat_fun, in_avals)
@@ -38,6 +42,12 @@ def cached_stage_dynamic(flat_fun, in_avals):
     return typed_jaxpr
 
 
+# The "graph capture" transformation is a "final style" one --
+# it has a custom JAX Trace and Tracer type.
+# This function is part of that style.
+# We don't really use this style in our own transformation, we
+# only use one of those transformations (cached_stage_dynamic)
+# to get a Jaxpr.
 @lu.transformation_with_aux
 def _flatten_fun_nokwargs(in_tree, *args_flat):
     py_args = jtu.tree_unflatten(in_tree, args_flat)
@@ -65,9 +75,14 @@ def stage(f):
     return wrapped
 
 
+###################
+# Our interpreter #
+###################
+
+
 @dataclass
 class Environment:
-    """Keeps track of variables and their values during propagation."""
+    """Keeps track of variables and their values during interpretation."""
 
     env: dict[int, Any] = field(default_factory=dict)
 
@@ -118,7 +133,7 @@ class Environment:
 
 @dataclass
 class MLAXInterpreter:
-    def _eval_jaxpr_forward(
+    def _eval_jaxpr_mx(
         self,
         _jaxpr: jc.Jaxpr,
         consts: list[Any],
@@ -131,8 +146,12 @@ class MLAXInterpreter:
             invals = jax_util.safe_map(env.read, eqn.invars)
             subfuns, params = eqn.primitive.get_bind_params(eqn.params)
             args = subfuns + invals
+
+            # Here's where we swap out (what would be) JAX's `eqn.primitive.bind`
+            # with our custom rules.
             rule = mlx_rules[eqn.primitive]
             outvals = rule(*args, **params)
+
             if not eqn.primitive.multiple_results:
                 outvals = [outvals]
             jax_util.safe_map(env.write, eqn.outvars, outvals)
@@ -145,7 +164,7 @@ class MLAXInterpreter:
 
         _closed_jaxpr, (flat_args, _, out_tree) = stage(_inner)(*args)
         _jaxpr, consts = _closed_jaxpr.jaxpr, _closed_jaxpr.literals
-        flat_out = self._eval_jaxpr_forward(
+        flat_out = self._eval_jaxpr_mx(
             _jaxpr,
             consts,
             flat_args,
