@@ -24,6 +24,7 @@ The way this API works is that the computation is first staged to a `Jaxpr`, and
 The idea here is that when `mx.compile` performs symbolic tracing through the above process, all the operations which occurs on `mx.array` are directly MLX operations. The result is a transpiler from JAX computations whose primitives have conversion rules (to equivalent MLX operations) to an MLX computation graph.
 
 This can even be used to do fun & dumb things like `mx.compile` a `jax.grad`:
+
 ```python
 import jax.numpy as jnp
 import mlx.core as mx
@@ -34,5 +35,22 @@ def jax_code(x, y):
     v = v * v
     return jnp.sin(v)
 
-mx.compile(mlax(jax.grad(jax_code)))(mx.array(5.0), mx.array(5.0))
+assert jax.grad(composed)(5.0, 5.0) == mx.compile(mlax(jax.grad(composed)))(
+    mx.array(5.0),
+    mx.array(5.0),
+)
+```
+
+or even a `jax.vmap`:
+
+```python
+def composed(x, y):
+    v = x + y
+    v = v * v
+    return jnp.sin(v)
+
+assert all(
+    jax.vmap(composed)(jnp.ones(5), jnp.ones(5))
+    == mx.compile(mlax(jax.vmap(composed)))(mx.ones(5), mx.ones(5))
+)
 ```
