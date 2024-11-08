@@ -44,13 +44,8 @@ assert jax.grad(composed)(5.0, 5.0) == mx.compile(mlax(jax.grad(composed)))(
 or even a `jax.vmap`:
 
 ```python
-def composed(x, y):
-    v = x + y
-    v = v * v
-    return jnp.sin(v)
-
 assert all(
-    jax.vmap(composed)(jnp.ones(5), jnp.ones(5))
-    == mx.compile(mlax(jax.vmap(composed)))(mx.ones(5), mx.ones(5))
+    jax.vmap(jax_code)(jnp.ones(5), jnp.ones(5))
+    == mx.compile(mlax(jax.vmap(jax_code)))(mx.ones(5), mx.ones(5))
 )
 ```
