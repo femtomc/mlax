@@ -5,9 +5,11 @@ from dataclasses import dataclass, field
 
 import beartype.typing as btyping
 import jax.core as jc
+import jax.numpy as jnp
 import jax.tree_util as jtu
 import mlx
-from jax import tree_util
+import mlx.core as mx
+from jax import lax, tree_util
 from jax import util as jax_util
 from jax.extend import linear_util as lu
 from jax.interpreters import batching, mlir
@@ -19,9 +21,17 @@ VarOrLiteral = jc.Var | jc.Literal
 Callable = btyping.Callable
 WrappedFunWithAux = tuple[lu.WrappedFun, Callable[[], Any]]
 
+dtype_map = {
+    mx.int32: int,
+    mx.float32: float,
+}
 
+
+# Convert MX arrays to a surrogate for JAX tracing.
 def get_shaped_aval(x):
-    return jc.raise_to_shaped(jc.get_aval(x))
+    shape, dtype = x.shape, x.dtype
+    surrogate = jnp.zeros(shape, dtype_map[dtype])
+    return jc.raise_to_shaped(jc.get_aval(surrogate))
 
 
 @lu.cache
@@ -109,7 +119,38 @@ class Environment:
         return Environment({k: self.env[k] for k in keys})
 
 
-mlx_rules: dict[jc.Primitive, Callable[[mlx.Array, ...], mlx.Array]] = {}
+@dataclass
+class Ruleset:
+    mlx_rules: dict[jc.Primitive, Callable[[mx.array, ...], mx.array]] = field(
+        default_factory=dict
+    )
+
+    def register(self, prim):
+        def _register(rule):
+            self.mlx_rules[prim] = rule
+
+        return _register
+
+    def __getitem__(self, key):
+        return self.mlx_rules[key]
+
+
+mlx_rules = Ruleset()
+
+
+@mlx_rules.register(lax.add_p)
+def add_mlx(x, y):
+    return x + y
+
+
+@mlx_rules.register(lax.mul_p)
+def mul_mlx(x, y):
+    return x * y
+
+
+@mlx_rules.register(lax.sin_p)
+def sin_mlx(x):
+    return mx.sin(x)
 
 
 @dataclass
