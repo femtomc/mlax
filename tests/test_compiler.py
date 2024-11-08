@@ -24,7 +24,7 @@ class TestCompiler:
             v = v * v
             return jnp.sin(v)
 
-        assert mx.compile(mlax(composed))(
+        assert composed(5.0, 5.0) == mx.compile(mlax(composed))(
             mx.array(5.0),
             mx.array(5.0),
         )
@@ -35,7 +35,7 @@ class TestCompiler:
             v = v * v
             return jnp.sin(v)
 
-        assert mx.compile(mlax(jax.grad(composed)))(
+        assert jax.grad(composed)(5.0, 5.0) == mx.compile(mlax(jax.grad(composed)))(
             mx.array(5.0),
             mx.array(5.0),
         )
