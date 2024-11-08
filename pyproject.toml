@@ -2,7 +2,7 @@
 name = "mlax"
 version = "0.1.0"
 description = ""
-authors = ["femtomc <mccoybecker@gmail.com>"]
+authors = ["McCoy R. Becker <mccoyb@mit.edu>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
