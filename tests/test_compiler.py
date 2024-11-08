@@ -1,22 +1,48 @@
 import jax
 import jax.numpy as jnp
+import jax.tree_util as jtu
 import mlx.core as mx
+import pytest
 
 from mlax import mlax
 
 
-class TestCompiler:
-    def test_add(self):
-        assert 10 == mx.compile(mlax(lambda x, y: x + y))(
-            mx.array(5),
-            mx.array(5),
+def jax_equality_assertion(prim_fn, *args):
+    dtype_map = {
+        mx.int32: int,
+        mx.float32: float,
+    }
+
+    def convert_to_jax(x):
+        return jnp.array(
+            x,
+            dtype=dtype_map[x.dtype],
         )
 
-    def test_mul(self):
-        assert 25 == mx.compile(mlax(lambda x, y: x * y))(
-            mx.array(5),
-            mx.array(5),
-        )
+    def fn(*args):
+        return prim_fn(*args)
+
+    def check(v):
+        if not isinstance(v, bool) and v.shape:
+            return all(v)
+        else:
+            return v
+
+    jax_args = jtu.tree_map(convert_to_jax, args)
+    assert check(
+        pytest.approx(jax.jit(fn)(*jax_args), 1e-5) == mx.compile(mlax(fn))(*args)
+    )
+
+
+class TestCompiler:
+    def test_add_p(self):
+        jax_equality_assertion(lambda x, y: x + y, mx.array(5.0), mx.array(5.0))
+
+    def test_mul_p(self):
+        jax_equality_assertion(lambda x, y: x * y, mx.array(5.0), mx.array(5.0))
+
+    def test_sin_p(self):
+        jax_equality_assertion(lambda x: jnp.sin(x), mx.array(5.0))
 
     def test_composition(self):
         def composed(x, y):
@@ -24,10 +50,7 @@ class TestCompiler:
             v = v * v
             return jnp.sin(v)
 
-        assert composed(5.0, 5.0) == mx.compile(mlax(composed))(
-            mx.array(5.0),
-            mx.array(5.0),
-        )
+        jax_equality_assertion(composed, mx.array(5.0), mx.array(5.0))
 
     def test_vmap_composition(self):
         def composed(x, y):
@@ -35,10 +58,7 @@ class TestCompiler:
             v = v * v
             return jnp.sin(v)
 
-        assert all(
-            jax.vmap(composed)(jnp.ones(5), jnp.ones(5))
-            == mx.compile(mlax(jax.vmap(composed)))(mx.ones(5), mx.ones(5))
-        )
+        jax_equality_assertion(jax.vmap(composed), mx.ones(5), mx.ones(5))
 
     def test_grad(self):
         def composed(x, y):
@@ -46,7 +66,4 @@ class TestCompiler:
             v = v * v
             return jnp.sin(v)
 
-        assert jax.grad(composed)(5.0, 5.0) == mx.compile(mlax(jax.grad(composed)))(
-            mx.array(5.0),
-            mx.array(5.0),
-        )
+        jax_equality_assertion(jax.grad(composed), mx.array(5.0), mx.array(5.0))
